@@ -5,7 +5,6 @@ import java.util.concurrent.TimeUnit;
 public class FileMonitor {
     private static final String WATCH_FOLDER = "C:\\Users\\ethan\\OneDrive\\Documents\\Death Star";
     private static final String GIT_REPO_PATH = "C:\\Users\\ethan\\OneDrive\\Documents\\SexyDeathStarz\\RobertsHell.github.io";
-    private static final String INDEX_HTML = GIT_REPO_PATH + "\\index.html";
 
     public static void main(String[] args) throws IOException, InterruptedException {
         // WatchService for monitoring file system changes
@@ -70,36 +69,40 @@ public class FileMonitor {
         // Read the original main.html
         String htmlContent = Files.readString(mainHtmlPath);
 
-        // Locate the gallery placeholder (e.g., <div class="gallery">...</div>)
-        String galleryStartTag = "<div class=\"gallery\">";
-        String galleryEndTag = "</div>";
+        // Locate the table body placeholder (<tbody>...</tbody>)
+        String tableStartTag = "<tbody>";
+        String tableEndTag = "</tbody>";
 
-        int startIndex = htmlContent.indexOf(galleryStartTag) + galleryStartTag.length();
-        int endIndex = htmlContent.indexOf(galleryEndTag, startIndex);
+        int startIndex = htmlContent.indexOf(tableStartTag) + tableStartTag.length();
+        int endIndex = htmlContent.indexOf(tableEndTag, startIndex);
 
         if (startIndex == -1 || endIndex == -1) {
-            System.err.println("Gallery placeholder not found in main.html.");
+            System.err.println("Table placeholder not found in main.html.");
             return;
         }
 
-        // Generate <img> tags for all images in the images folder
-        StringBuilder galleryContent = new StringBuilder();
+        // Generate <tr> rows for all images in the images folder
+        StringBuilder tableRows = new StringBuilder();
         Files.list(imagesFolder).forEach(imagePath -> {
             if (Files.isRegularFile(imagePath)) {
                 String imageName = imagesFolder.relativize(imagePath).toString();
-                galleryContent.append("<img src=\"images/").append(imageName).append("\" alt=\"").append(imageName)
-                        .append("\">\n");
+                tableRows.append("<tr>")
+                        .append("<td><img src=\"images/").append(imageName)
+                        .append("\" alt=\"").append(imageName)
+                        .append("\" onclick=\"openModal('images/").append(imageName).append("')\"></td>")
+                        .append("<td>").append(imageName).append("</td>")
+                        .append("</tr>");
             }
         });
 
-        // Replace the content inside the gallery placeholder
+        // Replace the content inside the table body
         String updatedHtmlContent = htmlContent.substring(0, startIndex) +
-                "\n" + galleryContent.toString() +
+                "\n" + tableRows.toString() +
                 htmlContent.substring(endIndex);
 
         // Write the updated content back to main.html
         Files.writeString(mainHtmlPath, updatedHtmlContent, StandardOpenOption.TRUNCATE_EXISTING);
-        System.out.println("Updated gallery in main.html.");
+        System.out.println("Updated image table in main.html.");
     }
 
     // Method to run the Git commands (add, commit, push)
@@ -113,7 +116,7 @@ public class FileMonitor {
             builder.command("git", "add", ".").start().waitFor();
 
             // Commit changes
-            builder.command("git", "commit", "-m", "Auto-update gallery in index.html").start().waitFor();
+            builder.command("git", "commit", "-m", "Auto-update gallery in main.html").start().waitFor();
 
             // Push changes
             Process pushProcess = builder.command("git", "push", "origin", "main").start(); // Adjust branch as needed
